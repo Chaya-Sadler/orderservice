@@ -19,7 +19,7 @@ public class SaleOrder {
     private List<OrderItem> items = new ArrayList<>();
 
     private UUID customerId; // one order can have multiple items
-    private OrderStatus status;
+    private String status;
     private Double totalPrice;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -37,8 +37,9 @@ public class SaleOrder {
         return items;
     }
 
-    public void setItems(List<OrderItem> items) {
-        this.items = items;
+    public void addOrderItems(OrderItem item){
+        this.items.add(item);
+        item.setSaleOrder(this);
     }
 
     public UUID getCustomerId() {
@@ -49,11 +50,11 @@ public class SaleOrder {
         this.customerId = customerId;
     }
 
-    public OrderStatus getStatus() {
+    public String getStatus() {
         return status;
     }
 
-    public void setStatus(OrderStatus status) {
+    public void setStatus(String status) {
         this.status = status;
     }
 
