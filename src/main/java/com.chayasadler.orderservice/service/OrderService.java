@@ -85,7 +85,7 @@ public class OrderService {
                 customerId,
                 saleOrderCreated.getTotalPrice(),
                 orderItemEventList,
-                saleOrderCreated.getStatus(),
+                "OrderPlaced",
                 "PENDING",
                 LocalDateTime.now()
                 );
@@ -98,7 +98,7 @@ public class OrderService {
 
         //saving outbox event in db
         OutBoxEvent outBoxEvent = new OutBoxEvent();
-        outBoxEvent.setEventType("order-events");
+        outBoxEvent.setEventType("OrderPlaced");
         outBoxEvent.setAggregateId(saleOrderCreated.getId().toString());
         outBoxEvent.setAggregateType("order");
         outBoxEvent.setPayload(payload);

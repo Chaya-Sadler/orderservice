@@ -15,7 +15,6 @@ public class EventProducer {
 
     public CompletableFuture<Void> publish(String topic, String key, String payload) {
        return kafkaTemplate.send(topic, key, payload)
-               //.toCompletableFuture()
                .thenAccept(SendResult -> {});
     }
 }
