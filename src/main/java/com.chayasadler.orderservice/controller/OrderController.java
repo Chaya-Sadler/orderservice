@@ -1,7 +1,7 @@
 package com.chayasadler.orderservice.controller;
 
-import com.chayasadler.orderservice.model.OrderRequest;
-import com.chayasadler.orderservice.model.OrderResponse;
+import com.chayasadler.orderservice.util.OrderRequest;
+import com.chayasadler.orderservice.util.OrderResponse;
 import com.chayasadler.orderservice.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;

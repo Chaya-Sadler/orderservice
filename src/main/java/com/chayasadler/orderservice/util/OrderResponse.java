@@ -1,4 +1,4 @@
-package com.chayasadler.orderservice.model;
+package com.chayasadler.orderservice.util;
 
 import java.util.UUID;
 
