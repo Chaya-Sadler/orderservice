@@ -7,6 +7,7 @@ import com.chayasadler.orderservice.ofeignclient.ProductServiceFeignClient;
 import com.chayasadler.orderservice.util.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.netflix.discovery.converters.Auto;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -16,8 +17,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class OrderService {
@@ -33,6 +34,9 @@ public class OrderService {
 
     @Autowired
     ObjectMapper objectMapper;
+
+    @Autowired
+    OutboxService outboxService;
 
     @Transactional
     public ResponseEntity<OrderResponse> createOrder(List<OrderRequest> orderRequestList, String customerId) {
@@ -79,8 +83,9 @@ public class OrderService {
                 .toList();
 
 
-        OrderPlacedEvent orderPlacedEvent = new OrderPlacedEvent(
+        OrderEvent orderPlacedEvent = new OrderEvent(
                 UUID.randomUUID(), //uniquely identiy the message
+                "OrderPlaced",
                 saleOrderCreated.getId().toString(),
                 customerId,
                 saleOrderCreated.getTotalPrice(),
@@ -88,26 +93,60 @@ public class OrderService {
                 "OrderPlaced",
                 "PENDING",
                 LocalDateTime.now()
-                );
-        String payload;
+        );
         try {
-            payload = objectMapper.writeValueAsString(orderPlacedEvent);
+            String payload = objectMapper.writeValueAsString(orderPlacedEvent);
+            //saving outbox event in db
+            outboxService.saveEvent("OrderPlaced", saleOrderCreated.getId().toString(), payload);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
-
-        //saving outbox event in db
-        OutBoxEvent outBoxEvent = new OutBoxEvent();
-        outBoxEvent.setEventType("OrderPlaced");
-        outBoxEvent.setAggregateId(saleOrderCreated.getId().toString());
-        outBoxEvent.setAggregateType("order");
-        outBoxEvent.setPayload(payload);
-        outBoxEvent.setStatus(EventStatus.UNSENT.name());
-        outBoxEvent.setCreatedAt(LocalDateTime.now());
-        iEventRepository.save(outBoxEvent);
-
         OrderResponse orderResponse = new OrderResponse(OrderStatus.CREATED.name(), saleOrderCreated.getId(),
                 totalProductPrice);
         return new ResponseEntity<>(orderResponse, HttpStatus.OK);
+    }
+
+    @Transactional
+    public void cancelOrder(String orderId, String customerId, String cancelReason) {
+        SaleOrder saleOrder = iOrderRepository.findById(UUID.fromString(orderId))
+                .orElseThrow();
+        saleOrder.setStatus(OrderStatus.CANCELLED.name());
+        saleOrder.setCancelReason(cancelReason);
+
+        OrderCancelledEvent cancelledEvent = new OrderCancelledEvent(
+                UUID.randomUUID(), //unique messageId for idempotency
+                orderId,
+                cancelReason,
+                LocalDateTime.now(),
+                customerId
+                        );
+        try {
+            String payload = objectMapper.writeValueAsString(cancelledEvent);
+            outboxService.saveEvent("OrderCancelled", orderId, payload);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Transactional
+    public void completeOrder(String orderId, String customerId) {
+
+        SaleOrder saleOrder = iOrderRepository.findById(UUID.fromString(orderId))
+                .orElseThrow();
+        saleOrder.setStatus(OrderStatus.CONFIRMED.name());
+
+        OrderCompletedEvent completedEvent = new OrderCompletedEvent(
+                UUID.randomUUID(),
+                orderId,
+                LocalDateTime.now(),
+                customerId,
+                OrderStatus.CONFIRMED.name()
+        );
+        try {
+            String payload = objectMapper.writeValueAsString(completedEvent);
+            outboxService.saveEvent("OrderCompleted", orderId, payload);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
