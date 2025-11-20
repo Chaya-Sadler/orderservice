@@ -2,6 +2,7 @@ package com.chayasadler.orderservice.service;
 
 import com.chayasadler.orderservice.dao.IEventRepository;
 import com.chayasadler.orderservice.dao.IOrderRepository;
+import com.chayasadler.orderservice.dao.IProcessedEventRepository;
 import com.chayasadler.orderservice.model.*;
 import com.chayasadler.orderservice.ofeignclient.ProductServiceFeignClient;
 import com.chayasadler.orderservice.util.*;
@@ -27,9 +28,6 @@ public class OrderService {
     IOrderRepository iOrderRepository;
 
     @Autowired
-    IEventRepository iEventRepository;
-
-    @Autowired
     ProductServiceFeignClient productServiceFeignClient;
 
     @Autowired
@@ -37,6 +35,9 @@ public class OrderService {
 
     @Autowired
     OutboxService outboxService;
+
+    @Autowired
+    private IProcessedEventRepository iProcessedEventRepository;
 
     @Transactional
     public ResponseEntity<OrderResponse> createOrder(List<OrderRequest> orderRequestList, String customerId) {
@@ -85,7 +86,7 @@ public class OrderService {
 
         OrderEvent orderPlacedEvent = new OrderEvent(
                 UUID.randomUUID(), //uniquely identiy the message
-                "OrderPlaced",
+                "OrderPlaced", //eventType
                 saleOrderCreated.getId().toString(),
                 customerId,
                 saleOrderCreated.getTotalPrice(),
@@ -107,46 +108,80 @@ public class OrderService {
     }
 
     @Transactional
-    public void cancelOrder(String orderId, String customerId, String cancelReason) {
-        SaleOrder saleOrder = iOrderRepository.findById(UUID.fromString(orderId))
-                .orElseThrow();
-        saleOrder.setStatus(OrderStatus.CANCELLED.name());
-        saleOrder.setCancelReason(cancelReason);
+    public void cancelOrder(OrderEvent orderEvent, String cancelReason) {
 
-        OrderCancelledEvent cancelledEvent = new OrderCancelledEvent(
-                UUID.randomUUID(), //unique messageId for idempotency
-                orderId,
-                cancelReason,
-                LocalDateTime.now(),
-                customerId
-                        );
-        try {
-            String payload = objectMapper.writeValueAsString(cancelledEvent);
-            outboxService.saveEvent("OrderCancelled", orderId, payload);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+        //check if the incoming message was already processed - Idempotency( Consumer part)
+        Optional<ProcessedEvent> findProcessedEvent = iProcessedEventRepository.
+                findByEventId((orderEvent.messageId()));
+        if(findProcessedEvent.isEmpty()){
+            SaleOrder saleOrder = iOrderRepository.findById(UUID.fromString(orderEvent.orderId()))
+                    .orElseThrow();
+            saleOrder.setStatus(OrderStatus.CANCELLED.name());
+            saleOrder.setCancelReason(cancelReason);
+
+            OrderEvent orderCancelledEvent = new OrderEvent(
+                    UUID.randomUUID(), //uniquely identiy the message
+                    "OrderCancelled", //eventType
+                    orderEvent.orderId(),
+                    orderEvent.customerId(),
+                    orderEvent.totalAmt(),
+                    orderEvent.orderItemEventList(),
+                    OrderStatus.CANCELLED.name(),
+                    "NONE",
+                    LocalDateTime.now());
+
+            try {
+                String payload = objectMapper.writeValueAsString(orderCancelledEvent);
+                outboxService.saveEvent("OrderCancelled", orderEvent.orderId(), payload);
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+
+            ProcessedEvent processedEvent = new ProcessedEvent();
+            processedEvent.setEventId(orderEvent.messageId());
+            processedEvent.setEventType(orderEvent.orderStatus());
+            processedEvent.setProcessedAt(LocalDateTime.now());
+
+            iProcessedEventRepository.save(processedEvent);
         }
+
+
     }
 
     @Transactional
-    public void completeOrder(String orderId, String customerId) {
+    public void completeOrder(OrderEvent orderEvent) {
 
-        SaleOrder saleOrder = iOrderRepository.findById(UUID.fromString(orderId))
-                .orElseThrow();
-        saleOrder.setStatus(OrderStatus.CONFIRMED.name());
+        //check if the incoming message was already processed - Idempotency( Consumer part)
+        Optional<ProcessedEvent> findProcessedEvent = iProcessedEventRepository.
+                findByEventId((orderEvent.messageId()));
+        if(findProcessedEvent.isEmpty()){
+            SaleOrder saleOrder = iOrderRepository.findById(UUID.fromString(orderEvent.orderId()))
+                    .orElseThrow();
+            saleOrder.setStatus(OrderStatus.CONFIRMED.name());
 
-        OrderCompletedEvent completedEvent = new OrderCompletedEvent(
-                UUID.randomUUID(),
-                orderId,
-                LocalDateTime.now(),
-                customerId,
-                OrderStatus.CONFIRMED.name()
-        );
-        try {
-            String payload = objectMapper.writeValueAsString(completedEvent);
-            outboxService.saveEvent("OrderCompleted", orderId, payload);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            OrderEvent orderCompletedEvent = new OrderEvent(
+                    UUID.randomUUID(), //uniquely identiy the message
+                    "OrderCompleted", //eventType
+                    orderEvent.orderId(),
+                    orderEvent.customerId(),
+                    orderEvent.totalAmt(),
+                    orderEvent.orderItemEventList(),
+                    OrderStatus.CONFIRMED.name(),
+                    "PaymentCompleted",
+                    LocalDateTime.now());
+            try {
+                String payload = objectMapper.writeValueAsString(orderCompletedEvent);
+                outboxService.saveEvent("OrderCompleted", orderEvent.orderId(), payload);
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+
+            ProcessedEvent processedEvent = new ProcessedEvent();
+            processedEvent.setEventId(orderEvent.messageId());
+            processedEvent.setEventType(orderEvent.orderStatus());
+            processedEvent.setProcessedAt(LocalDateTime.now());
+
+            iProcessedEventRepository.save(processedEvent);
         }
     }
 }
