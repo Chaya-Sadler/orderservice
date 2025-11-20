@@ -149,8 +149,4 @@ public class OrderService {
             throw new RuntimeException(e);
         }
     }
-
-    private constructPayLoad(OrderEvent event) {
-
-    }
 }
