@@ -23,9 +23,8 @@ public class EventConsumer {
         try{
             OrderEvent event = mapper.readValue(payload, OrderEvent.class);
             switch (event.eventType()){
-                case "PaymentCompleted" -> orderService.completeOrder(event.orderId(), event.customerId());
-                case "PaymentFailed" -> orderService.cancelOrder(event.orderId(), event.customerId(),
-                        "PAYMENT_FAILED");
+                case "PaymentCompleted" -> orderService.completeOrder(event);
+                case "PaymentFailed" -> orderService.cancelOrder(event, "PAYMENT_FAILED");
             }
             acknowledgment.acknowledge();
 
@@ -39,7 +38,7 @@ public class EventConsumer {
         try {
             OrderEvent event = mapper.readValue(payload, OrderEvent.class);
             if(event.eventType().equals("InventoryFailed")){
-                orderService.cancelOrder(event.orderId(), event.customerId(), "INVENTORY_FAILED");
+                orderService.cancelOrder(event, "INVENTORY_FAILED");
             }
             acknowledgment.acknowledge();
         } catch (Exception exe) {
