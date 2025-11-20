@@ -20,6 +20,7 @@ public class SaleOrder {
 
     private UUID customerId; // one order can have multiple items
     private String status;
+    private String cancelReason;
     private Double totalPrice;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -56,6 +57,14 @@ public class SaleOrder {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getCancelReason() {
+        return cancelReason;
+    }
+
+    public void setCancelReason(String cancelReason) {
+        this.cancelReason = cancelReason;
     }
 
     public Double getTotalPrice() {
