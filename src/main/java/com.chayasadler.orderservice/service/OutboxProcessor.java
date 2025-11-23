@@ -23,7 +23,7 @@ public class OutboxProcessor {
     @Autowired
     EventProducer eventProducer;
 
-    @Value("{spring.topic.order.name}")
+    @Value("${spring.topic.order.name}")
     private String topicName;
 
     private final Pageable pageSize = PageRequest.of(0, 10);
