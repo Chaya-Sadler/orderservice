@@ -23,22 +23,19 @@ public class EventConsumer {
         try{
             OrderEvent event = mapper.readValue(payload, OrderEvent.class);
             switch (event.eventType()) {
-                case "PaymentCompleted" : {
+                case "PaymentCompleted" -> {
                     orderService.completeOrder(event);
                     acknowledgment.acknowledge();
                 }
-                case "PaymentFailed" : {
-                    orderService.completeOrder(event);
+                case "PaymentFailed" -> {
+                    orderService.cancelOrder(event, "PAYMENT_FAILED");
                     acknowledgment.acknowledge();
                 }
-                case "PAYMENT_FAILED" : {
-                    orderService.cancelOrder(event, "");
-                    acknowledgment.acknowledge();
-                }
-                default: {
-                    System.err.println("Received wrong event type : " + event.eventType());
+                default -> {
+                    System.err.println("Received wrong event type in Payment : " + event.eventType());
                 }
             }
+
         }catch (Exception exe) {
             System.err.println(" Failed to consumer Payment Service payload " + exe.getMessage());
         }
