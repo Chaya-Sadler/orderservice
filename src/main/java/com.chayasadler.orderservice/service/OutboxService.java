@@ -1,6 +1,6 @@
 package com.chayasadler.orderservice.service;
 
-import com.chayasadler.orderservice.dao.IEventRepository;
+import com.chayasadler.orderservice.dao.IOutboxEventRepository;
 import com.chayasadler.orderservice.model.OutBoxEvent;
 import com.chayasadler.orderservice.util.EventStatus;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 public class OutboxService {
 
     @Autowired
-    IEventRepository iEventRepository;
+    IOutboxEventRepository iOutboxEventRepository;
 
     public void saveEvent(String eventType, String orderId, String payload) {
 
@@ -25,6 +25,6 @@ public class OutboxService {
         outBoxEvent.setStatus(EventStatus.UNSENT.name());
         outBoxEvent.setCreatedAt(LocalDateTime.now());
 
-        iEventRepository.save(outBoxEvent);
+        iOutboxEventRepository.save(outBoxEvent);
     }
 }

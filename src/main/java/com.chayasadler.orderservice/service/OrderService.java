@@ -1,6 +1,5 @@
 package com.chayasadler.orderservice.service;
 
-import com.chayasadler.orderservice.dao.IEventRepository;
 import com.chayasadler.orderservice.dao.IOrderRepository;
 import com.chayasadler.orderservice.dao.IProcessedEventRepository;
 import com.chayasadler.orderservice.model.*;
@@ -8,7 +7,6 @@ import com.chayasadler.orderservice.ofeignclient.ProductServiceFeignClient;
 import com.chayasadler.orderservice.util.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.netflix.discovery.converters.Auto;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;

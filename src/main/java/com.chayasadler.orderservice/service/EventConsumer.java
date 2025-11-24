@@ -22,12 +22,23 @@ public class EventConsumer {
 
         try{
             OrderEvent event = mapper.readValue(payload, OrderEvent.class);
-            switch (event.eventType()){
-                case "PaymentCompleted" -> orderService.completeOrder(event);
-                case "PaymentFailed" -> orderService.cancelOrder(event, "PAYMENT_FAILED");
+            switch (event.eventType()) {
+                case "PaymentCompleted" : {
+                    orderService.completeOrder(event);
+                    acknowledgment.acknowledge();
+                }
+                case "PaymentFailed" : {
+                    orderService.completeOrder(event);
+                    acknowledgment.acknowledge();
+                }
+                case "PAYMENT_FAILED" : {
+                    orderService.cancelOrder(event, "");
+                    acknowledgment.acknowledge();
+                }
+                default: {
+                    System.err.println("Received wrong event type : " + event.eventType());
+                }
             }
-            acknowledgment.acknowledge();
-
         }catch (Exception exe) {
             System.err.println(" Failed to consumer Payment Service payload " + exe.getMessage());
         }
@@ -39,8 +50,9 @@ public class EventConsumer {
             OrderEvent event = mapper.readValue(payload, OrderEvent.class);
             if(event.eventType().equals("InventoryFailed")){
                 orderService.cancelOrder(event, "INVENTORY_FAILED");
+                acknowledgment.acknowledge();
             }
-            acknowledgment.acknowledge();
+
         } catch (Exception exe) {
             System.err.println(" Failed to process OrderReserved event from order service, offset is not committed");
         }

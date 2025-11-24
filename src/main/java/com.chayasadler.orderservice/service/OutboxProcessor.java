@@ -5,6 +5,7 @@ import com.chayasadler.orderservice.model.OutBoxEvent;
 import com.chayasadler.orderservice.util.EventStatus;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,6 +23,9 @@ public class OutboxProcessor {
     @Autowired
     EventProducer eventProducer;
 
+    @Value("${spring.topic.order.name}")
+    private String topicName;
+
     private final Pageable pageSize = PageRequest.of(0, 10);
 
     @Transactional
@@ -37,7 +41,7 @@ public class OutboxProcessor {
         for(OutBoxEvent event : eventsList) {
             try{
                 eventProducer.publish(
-                        event.getEventType(), //order-events - topic name
+                        topicName, //order.events - topic name
                         event.getAggregateId(), //order id - message key, all events related to same order goes into same partition
                         event.getPayload() // message
                 ).join(); //wait for success, forces async call to complete before continuing
